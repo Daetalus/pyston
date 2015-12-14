@@ -114,9 +114,9 @@ extern "C" double floordiv_float_float(double lhs, double rhs) {
 Box* convertToFloat(Box* val) {
     if (PyInt_Check(val)) {
         return boxFloat(static_cast<BoxedInt*>(val)->n);
-    } else if (val->cls == float_cls) {
+    } else if (PyFloat_Check(val)) {
         return static_cast<BoxedFloat*>(val);
-    } else if (val->cls == long_cls) {
+    } else if (PyLong_Check(val)) {
         double rhs_f = PyLong_AsDouble(val);
         if (rhs_f == -1.0 && PyErr_Occurred()) {
             throwCAPIException();

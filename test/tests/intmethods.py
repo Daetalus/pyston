@@ -178,3 +178,48 @@ if sys.version_info >= (2, 7, 6):
         print(e.message)
 else:
     print("int() missing string argument")
+
+test_data = [-10, -5, -1, 0, 1, 5, 10]
+for i in test_data:
+    for j in test_data:
+        print(int.__rsub__(i, j))
+        print(int.__rmul__(i, j))
+        try:
+            print(int.__rdiv__(i, j))
+        except ZeroDivisionError as e:
+            print(e.message)
+        try:
+            print(int.__rfloordiv__(i, j))
+        except ZeroDivisionError as e:
+            print(e.message)
+        try:
+            print(int.__rtruediv__(i, j))
+        except ZeroDivisionError as e:
+            print(e.message)
+        try:
+            print(int.__rmod__(i, j))
+        except ZeroDivisionError as e:
+            print(e.message)
+        try:
+            print(int.__rdivmod__(i, j))
+        except ZeroDivisionError as e:
+            print(e.message)
+        try:
+            print(int.__rpow__(i, j))
+        except Exception as e:
+            print(e.message)
+        try:
+            print(int.__rrshift__(i, j))
+        except Exception as e:
+            print(e.message)
+        try:
+            print(int.__rlshift__(i, j))
+        except Exception as e:
+            print(e.message)
+        print(int.__rand__(i, j))
+        print(int.__ror__(i, j))
+        print(int.__rxor__(i, j))
+        print(int.__coerce__(i, j))
+
+for i in xrange(-100, 100):
+    print(int.__abs__(i))
