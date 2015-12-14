@@ -111,6 +111,22 @@ extern "C" double floordiv_float_float(double lhs, double rhs) {
     return floor(lhs / rhs);
 }
 
+Box* convertToFloat(Box* val) {
+    if (PyInt_Check(val)) {
+        return boxFloat(static_cast<BoxedInt*>(val)->n);
+    } else if (val->cls == float_cls) {
+        return static_cast<BoxedFloat*>(val);
+    } else if (val->cls == long_cls) {
+        double rhs_f = PyLong_AsDouble(val);
+        if (rhs_f == -1.0 && PyErr_Occurred()) {
+            throwCAPIException();
+        }
+        return boxFloat(rhs_f);
+    } else {
+        return NotImplemented;
+    }
+}
+
 extern "C" Box* floatAddFloat(BoxedFloat* lhs, BoxedFloat* rhs) {
     assert(lhs->cls == float_cls);
     assert(rhs->cls == float_cls);
@@ -140,135 +156,86 @@ extern "C" Box* floatAdd(BoxedFloat* lhs, Box* rhs) {
     }
 }
 
-extern "C" Box* floatDivFloat(BoxedFloat* lhs, BoxedFloat* rhs) {
-    assert(lhs->cls == float_cls);
-    assert(rhs->cls == float_cls);
-    raiseDivZeroExcIfZero(rhs->d);
-    return boxFloat(lhs->d / rhs->d);
-}
-
-extern "C" Box* floatDivInt(BoxedFloat* lhs, BoxedInt* rhs) {
-    assert(lhs->cls == float_cls);
-    assert(PyInt_Check(rhs));
-    raiseDivZeroExcIfZero(rhs->n);
-    return boxFloat(lhs->d / rhs->n);
-}
-
-extern "C" Box* floatDiv(BoxedFloat* lhs, Box* rhs) {
-    assert(lhs->cls == float_cls);
-    if (PyInt_Check(rhs)) {
-        return floatDivInt(lhs, static_cast<BoxedInt*>(rhs));
-    } else if (rhs->cls == float_cls) {
-        return floatDivFloat(lhs, static_cast<BoxedFloat*>(rhs));
-    } else if (rhs->cls == long_cls) {
-        double rhs_f = PyLong_AsDouble(rhs);
-        if (rhs_f == -1.0 && PyErr_Occurred()) {
-            throwCAPIException();
-        }
-        return boxFloat(lhs->d / rhs_f);
-    } else {
+Box* floatDivFloat(BoxedFloat* lhs, Box* _rhs) {
+    Box* rhs = convertToFloat(_rhs);
+    if (rhs == NotImplemented)
         return NotImplemented;
-    }
+
+    BoxedFloat* rhs_float = static_cast<BoxedFloat*>(rhs);
+    raiseDivZeroExcIfZero(rhs_float->d);
+    return boxFloat(lhs->d / rhs_float->d);
 }
 
-extern "C" Box* floatTruediv(BoxedFloat* lhs, Box* rhs) {
-    assert(lhs->cls == float_cls);
-    if (PyInt_Check(rhs)) {
-        return floatDivInt(lhs, static_cast<BoxedInt*>(rhs));
-    } else if (rhs->cls == float_cls) {
-        return floatDivFloat(lhs, static_cast<BoxedFloat*>(rhs));
-    } else if (rhs->cls == long_cls) {
-        double rhs_f = PyLong_AsDouble(rhs);
-        if (rhs_f == -1.0 && PyErr_Occurred()) {
-            throwCAPIException();
-        }
-        return boxFloat(lhs->d / rhs_f);
-    } else {
+Box* floatDiv(BoxedFloat* lhs, Box* rhs) {
+
+    if (!PyFloat_Check(lhs))
+        raiseExcHelper(TypeError, "descriptor '__div__' requires a 'float' object but received a '%s'",
+                       getTypeName(lhs));
+
+    return floatDivFloat(lhs, rhs);
+}
+
+Box* floatRDivFloat(BoxedFloat* lhs, Box* _rhs) {
+    Box* rhs = convertToFloat(_rhs);
+    if (rhs == NotImplemented)
         return NotImplemented;
-    }
-}
 
-extern "C" Box* floatRDivFloat(BoxedFloat* lhs, BoxedFloat* rhs) {
-    assert(lhs->cls == float_cls);
-    assert(rhs->cls == float_cls);
+    BoxedFloat* rhs_float = static_cast<BoxedFloat*>(rhs);
     raiseDivZeroExcIfZero(lhs->d);
-    return boxFloat(rhs->d / lhs->d);
+    if (rhs_float == 0)
+        return boxFloat(0);
+    return boxFloat(rhs_float->d / lhs->d);
 }
 
-extern "C" Box* floatRDivInt(BoxedFloat* lhs, BoxedInt* rhs) {
-    assert(lhs->cls == float_cls);
-    assert(PyInt_Check(rhs));
-    raiseDivZeroExcIfZero(lhs->d);
-    return boxFloat(rhs->n / lhs->d);
+Box* floatRDiv(BoxedFloat* lhs, Box* rhs) {
+    if (!PyFloat_Check(lhs))
+        raiseExcHelper(TypeError, "descriptor '__rdiv__' requires a 'float' object but received a '%s'",
+                       getTypeName(lhs));
+
+    return floatRDivFloat(lhs, rhs);
 }
 
-extern "C" Box* floatRDiv(BoxedFloat* lhs, Box* rhs) {
-    assert(lhs->cls == float_cls);
-    if (PyInt_Check(rhs)) {
-        return floatRDivInt(lhs, static_cast<BoxedInt*>(rhs));
-    } else if (rhs->cls == float_cls) {
-        return floatRDivFloat(lhs, static_cast<BoxedFloat*>(rhs));
-    } else if (rhs->cls == long_cls) {
-        double rhs_f = PyLong_AsDouble(rhs);
-        if (rhs_f == -1.0 && PyErr_Occurred()) {
-            throwCAPIException();
-        }
-        return boxFloat(rhs_f / lhs->d);
-    } else {
+Box* floatTruediv(BoxedFloat* lhs, Box* rhs) {
+    if (!PyFloat_Check(lhs))
+        raiseExcHelper(TypeError, "descriptor '__truediv__' requires a 'float' object but received a '%s'",
+                       getTypeName(lhs));
+
+    return floatDivFloat(lhs, rhs);
+}
+
+Box* floatRTruediv(BoxedFloat* lhs, Box* rhs) {
+    if (!PyFloat_Check(lhs))
+        raiseExcHelper(TypeError, "descriptor '__rtruediv__' requires a 'float' object but received a '%s'",
+                       getTypeName(lhs));
+
+    return floatRDivFloat(lhs, rhs);
+}
+
+Box* floatFloorDiv(BoxedFloat* lhs, Box* _rhs) {
+    if (!PyFloat_Check(lhs))
+        raiseExcHelper(TypeError, "descriptor '__floordiv__' requires a 'float' object but received a '%s'",
+                       getTypeName(lhs));
+    Box* rhs = convertToFloat(_rhs);
+    if (rhs == NotImplemented)
         return NotImplemented;
-    }
+
+    BoxedFloat* rhs_float = static_cast<BoxedFloat*>(rhs);
+    raiseDivZeroExcIfZero(rhs_float->d);
+    return boxFloat(floor(lhs->d / rhs_float->d));
 }
 
-extern "C" Box* floatFloorDivFloat(BoxedFloat* lhs, BoxedFloat* rhs) {
-    assert(lhs->cls == float_cls);
-    assert(rhs->cls == float_cls);
-    raiseDivZeroExcIfZero(rhs->d);
-    return boxFloat(floor(lhs->d / rhs->d));
-}
 
-extern "C" Box* floatFloorDivInt(BoxedFloat* lhs, BoxedInt* rhs) {
-    assert(lhs->cls == float_cls);
-    assert(PyInt_Check(rhs));
-    raiseDivZeroExcIfZero(rhs->n);
-    return boxFloat(floor(lhs->d / rhs->n));
-}
-
-extern "C" Box* floatFloorDiv(BoxedFloat* lhs, Box* rhs) {
-    assert(lhs->cls == float_cls);
-    if (PyInt_Check(rhs)) {
-        return floatFloorDivInt(lhs, static_cast<BoxedInt*>(rhs));
-    } else if (rhs->cls == float_cls) {
-        return floatFloorDivFloat(lhs, static_cast<BoxedFloat*>(rhs));
-    } else if (rhs->cls == long_cls) {
-        double rhs_f = PyLong_AsDouble(rhs);
-        if (rhs_f == -1.0 && PyErr_Occurred()) {
-            throwCAPIException();
-        }
-        return floatFloorDivFloat(lhs, new BoxedFloat(rhs_f));
-    } else {
+Box* floatRFloorDiv(BoxedFloat* lhs, Box* _rhs) {
+    if (!PyFloat_Check(lhs))
+        raiseExcHelper(TypeError, "descriptor '__rfloordiv__' requires a 'float' object but received a '%s'",
+                       getTypeName(lhs));
+    Box* rhs = convertToFloat(_rhs);
+    if (rhs == NotImplemented)
         return NotImplemented;
-    }
-}
 
-extern "C" Box* floatRFloorDiv(BoxedFloat* lhs, Box* _rhs) {
-    assert(lhs->cls == float_cls);
-    if (PyInt_Check(_rhs)) {
-        BoxedInt* rhs = (BoxedInt*)_rhs;
-        raiseDivZeroExcIfZero(lhs->d);
-        return boxFloat(floor(rhs->n / lhs->d));
-    } else if (_rhs->cls == float_cls) {
-        BoxedFloat* rhs = (BoxedFloat*)_rhs;
-        raiseDivZeroExcIfZero(lhs->d);
-        return boxFloat(floor(rhs->d / lhs->d));
-    } else if (_rhs->cls == long_cls) {
-        double rhs_f = PyLong_AsDouble(_rhs);
-        if (rhs_f == -1.0 && PyErr_Occurred()) {
-            throwCAPIException();
-        }
-        return floatFloorDivFloat(new BoxedFloat(rhs_f), lhs);
-    } else {
-        return NotImplemented;
-    }
+    BoxedFloat* rhs_float = static_cast<BoxedFloat*>(rhs);
+    raiseDivZeroExcIfZero(rhs_float->d);
+    return boxFloat(floor(rhs_float->d / lhs->d));
 }
 
 /* Comparison is pretty much a nightmare.  When comparing float to float,
@@ -631,7 +598,7 @@ extern "C" Box* floatRMod(BoxedFloat* lhs, Box* rhs) {
     }
 }
 
-extern "C" Box* floatPow(BoxedFloat* lhs, Box* rhs, Box* mod) {
+Box* floatPow(BoxedFloat* lhs, Box* rhs, Box* mod) {
     Box* res = float_pow(lhs, rhs, mod);
     if (!res) {
         throwCAPIException();
@@ -639,18 +606,12 @@ extern "C" Box* floatPow(BoxedFloat* lhs, Box* rhs, Box* mod) {
     return res;
 }
 
-extern "C" Box* floatPowFloat(BoxedFloat* lhs, BoxedFloat* rhs, Box* mod = None) {
-    // TODO to specialize this, need to account for all the special cases in float_pow
-    assert(lhs->cls == float_cls);
-    assert(rhs->cls == float_cls);
-    return floatPow(lhs, rhs, mod);
-}
-
-extern "C" Box* floatPowInt(BoxedFloat* lhs, BoxedInt* rhs, Box* mod = None) {
-    // TODO to specialize this, need to account for all the special cases in float_pow
-    assert(lhs->cls == float_cls);
-    assert(PyInt_Check(rhs));
-    return floatPow(lhs, rhs, mod);
+Box* floatRPow(BoxedFloat* lhs, Box* rhs) {
+    Box* res = float_pow(rhs, lhs, None);
+    if (!res) {
+        throwCAPIException();
+    }
+    return res;
 }
 
 extern "C" double pow_float_float(double lhs, double rhs) {
@@ -1594,19 +1555,23 @@ void setupFloat() {
     _addFunc("__add__", BOXED_FLOAT, (void*)floatAddFloat, (void*)floatAddInt, (void*)floatAdd);
     float_cls->giveAttr("__radd__", float_cls->getattr(internStringMortal("__add__")));
 
-    _addFunc("__div__", BOXED_FLOAT, (void*)floatDivFloat, (void*)floatDivInt, (void*)floatDiv);
-    _addFunc("__rdiv__", BOXED_FLOAT, (void*)floatRDivFloat, (void*)floatRDivInt, (void*)floatRDiv);
-    _addFunc("__floordiv__", BOXED_FLOAT, (void*)floatFloorDivFloat, (void*)floatFloorDivInt, (void*)floatFloorDiv);
+    float_cls->giveAttr("__div__", new BoxedFunction(FunctionMetadata::create((void*)floatDiv, UNKNOWN, 2)));
+    float_cls->giveAttr("__rdiv__", new BoxedFunction(FunctionMetadata::create((void*)floatRDiv, UNKNOWN, 2)));
+    float_cls->giveAttr("__truediv__", new BoxedFunction(FunctionMetadata::create((void*)floatTruediv, UNKNOWN, 2)));
+    float_cls->giveAttr("__rtruediv__", new BoxedFunction(FunctionMetadata::create((void*)floatRTruediv, UNKNOWN, 2)));
+    float_cls->giveAttr("__floordiv__", new BoxedFunction(FunctionMetadata::create((void*)floatFloorDiv, UNKNOWN, 2)));
     float_cls->giveAttr("__rfloordiv__",
                         new BoxedFunction(FunctionMetadata::create((void*)floatRFloorDiv, BOXED_FLOAT, 2)));
-    _addFunc("__truediv__", BOXED_FLOAT, (void*)floatDivFloat, (void*)floatDivInt, (void*)floatTruediv);
+
 
     _addFunc("__mod__", BOXED_FLOAT, (void*)floatModFloat, (void*)floatModInt, (void*)floatMod);
     _addFunc("__rmod__", BOXED_FLOAT, (void*)floatRModFloat, (void*)floatRModInt, (void*)floatRMod);
     _addFunc("__mul__", BOXED_FLOAT, (void*)floatMulFloat, (void*)floatMulInt, (void*)floatMul);
     float_cls->giveAttr("__rmul__", float_cls->getattr(internStringMortal("__mul__")));
 
-    _addFuncPow("__pow__", BOXED_FLOAT, (void*)floatPowFloat, (void*)floatPowInt, (void*)floatPow);
+    float_cls->giveAttr(
+        "__pow__", new BoxedFunction(FunctionMetadata::create((void*)floatPow, UNKNOWN, 3, false, false), { None }));
+    float_cls->giveAttr("__rpow__", new BoxedFunction(FunctionMetadata::create((void*)floatRPow, UNKNOWN, 2)));
     _addFunc("__sub__", BOXED_FLOAT, (void*)floatSubFloat, (void*)floatSubInt, (void*)floatSub);
     _addFunc("__rsub__", BOXED_FLOAT, (void*)floatRSubFloat, (void*)floatRSubInt, (void*)floatRSub);
 
