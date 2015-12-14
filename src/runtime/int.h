@@ -34,30 +34,6 @@ extern "C" Box* add_i64_i64(i64 lhs, i64 rhs);
 extern "C" Box* sub_i64_i64(i64 lhs, i64 rhs);
 extern "C" Box* pow_i64_i64(i64 lhs, i64 rhs, Box* mod = None);
 extern "C" Box* mul_i64_i64(i64 lhs, i64 rhs);
-extern "C" Box* intAdd(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intAnd(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intDiv(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intEq(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intNe(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intLt(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intLe(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intGt(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intGe(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intLShift(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intMod(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intMul(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intRShift(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intSub(BoxedInt* lhs, Box* rhs);
-extern "C" Box* intInvert(BoxedInt* v);
-extern "C" Box* intPos(BoxedInt* v);
-extern "C" Box* intNeg(BoxedInt* v);
-extern "C" Box* intNonzero(BoxedInt* v);
-extern "C" BoxedString* intRepr(BoxedInt* v);
-extern "C" Box* intHash(BoxedInt* self);
-extern "C" Box* intNew1(Box* cls);
-extern "C" Box* intNew2(Box* cls, Box* val);
-extern "C" Box* intInit1(Box* self);
-extern "C" Box* intInit2(BoxedInt* self, Box* val);
 }
 
 #endif
