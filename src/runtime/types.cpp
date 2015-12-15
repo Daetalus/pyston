@@ -544,6 +544,15 @@ Box* BoxedModule::getUnicodeConstant(llvm::StringRef ast_str) {
     return r;
 }
 
+BoxedTuple* BoxedModule::getTupleConstant(BoxedTuple* constant_tuple) {
+    // BoxedTuple*& r = tuple_constants[constant_tuple];
+    //
+    // if (!r)
+    return constant_tuple;
+    // r = createTuple(nelts, constant_tuple);
+    // return r;
+}
+
 BoxedInt* BoxedModule::getIntConstant(int64_t n) {
     BoxedInt*& r = int_constants[n];
     if (!r)
@@ -590,6 +599,7 @@ void BoxedModule::gcHandler(GCVisitor* v, Box* b) {
 
     visitContiguousMap(v, d->str_constants);
     visitContiguousMap(v, d->unicode_constants);
+    visitContiguousMap(v, d->tuple_constants);
     visitContiguousMap(v, d->int_constants);
     visitContiguousMap(v, d->float_constants);
     visitContiguousMap(v, d->imaginary_constants);

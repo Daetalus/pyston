@@ -866,6 +866,7 @@ public:
     BoxedString* getStringConstant(llvm::StringRef ast_str, bool intern = false);
     Box* getUnicodeConstant(llvm::StringRef ast_str);
     BoxedInt* getIntConstant(int64_t n);
+    BoxedTuple* getTupleConstant(BoxedTuple* tuple);
     BoxedFloat* getFloatConstant(double d);
     Box* getPureImaginaryConstant(double d);
     Box* getLongConstant(llvm::StringRef s);
@@ -875,6 +876,7 @@ public:
 private:
     ContiguousMap<llvm::StringRef, BoxedString*, llvm::StringMap<int>> str_constants;
     ContiguousMap<llvm::StringRef, Box*, llvm::StringMap<int>> unicode_constants;
+    ContiguousMap<BoxedTuple*, BoxedTuple*, std::unordered_map<BoxedTuple*, int>> tuple_constants;
     // Note: DenseMap doesn't work here since we don't prevent the tombstone/empty
     // keys from reaching it.
     ContiguousMap<int64_t, BoxedInt*, std::unordered_map<int64_t, int>> int_constants;

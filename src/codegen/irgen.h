@@ -103,6 +103,7 @@ public:
                                                 llvm::Value* exc_val, bool double_check = false) = 0;
 
     virtual Box* getIntConstant(int64_t n) = 0;
+    virtual Box* getTupleConstant(Box* elts) = 0;
     virtual Box* getFloatConstant(double d) = 0;
 };
 

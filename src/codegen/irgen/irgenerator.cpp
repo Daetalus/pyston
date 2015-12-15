@@ -493,8 +493,10 @@ public:
 
         setCurrentBasicBlock(normal_dest);
     }
-
     Box* getIntConstant(int64_t n) override { return irstate->getSourceInfo()->parent_module->getIntConstant(n); }
+    Box* getTupleConstant(Box* elts) override {
+        return irstate->getSourceInfo()->parent_module->getTupleConstant(static_cast<BoxedTuple*>(elts));
+    }
 
     Box* getFloatConstant(double d) override { return irstate->getSourceInfo()->parent_module->getFloatConstant(d); }
 };

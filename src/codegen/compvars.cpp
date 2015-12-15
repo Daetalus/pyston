@@ -17,7 +17,10 @@
 #include <cstdio>
 #include <sstream>
 
+#include "llvm/IR/Constant.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "codegen/codegen.h"
@@ -34,6 +37,23 @@
 #include "runtime/util.h"
 
 namespace pyston {
+
+Box* extractBox(const llvm::Value* value) {
+    assert(value->getType() == g.llvm_value_type_ptr);
+    if (const llvm::ConstantExpr* CE = llvm::dyn_cast<const llvm::ConstantExpr>(value)) {
+        llvm::PointerType* PT = llvm::dyn_cast<llvm::PointerType>(CE->getType());
+        if (CE->isCast() && CE->getOpcode() == llvm::Instruction::IntToPtr && PT)
+            return (Box*)llvm::cast<llvm::ConstantInt>(CE->getOperand(0))->getSExtValue();
+    }
+    if (const llvm::GlobalVariable* GV = llvm::dyn_cast<const llvm::GlobalVariable>(value)) {
+        if (GV->isConstant()) {
+            const void* ptr = getValueOfRelocatableSym(GV->getName());
+            assert(ptr);
+            return (Box*)ptr;
+        }
+    }
+    return NULL;
+}
 
 CompilerType* CompilerType::getPystonIterType() {
     static BoxedString* iter_str = internStringImmortal("__iter__");
@@ -2553,10 +2573,8 @@ public:
 
         std::vector<ConcreteCompilerVariable*> converted_args;
 
-        llvm::Value* nelts = llvm::ConstantInt::get(g.i64, v.size(), false);
-
-        llvm::Value* _scratch = emitter.getScratch(v.size() * sizeof(void*));
-        auto scratch = emitter.getBuilder()->CreateBitCast(_scratch, g.llvm_value_type_ptr->getPointerTo());
+        bool is_constant_tuple = true;
+        Box** extract_constants = (Box**)alloca(sizeof(Box*) * v.size());
 
         // First, convert all the args, before putting any in the scratch.
         // Do it this way in case any of the conversions themselves need scratch space
@@ -2566,15 +2584,32 @@ public:
         // multiple concurrent scratch users.
         for (int i = 0; i < v.size(); i++) {
             ConcreteCompilerVariable* converted = v[i]->makeConverted(emitter, v[i]->getBoxType());
+            Box* elt = extractBox(converted->getValue());
+            if (elt == NULL) {
+                is_constant_tuple = false;
+            } else {
+                extract_constants[i] = elt;
+            }
             converted_args.push_back(converted);
         }
 
-        for (int i = 0; i < v.size(); i++) {
-            llvm::Value* ptr = emitter.getBuilder()->CreateConstGEP1_32(scratch, i);
-            emitter.getBuilder()->CreateStore(converted_args[i]->getValue(), ptr);
-        }
+        llvm::Value* rtn;
+        if (is_constant_tuple) {
+            BoxedTuple* constant_tuple = BoxedTuple::create(v.size(), extract_constants);
+            rtn = embedRelocatablePtr(emitter.getTupleConstant(constant_tuple), g.llvm_value_type_ptr);
+        } else {
+            llvm::Value* nelts = llvm::ConstantInt::get(g.i64, v.size(), false);
 
-        llvm::Value* rtn = emitter.getBuilder()->CreateCall2(g.funcs.createTuple, nelts, scratch);
+            llvm::Value* _scratch = emitter.getScratch(v.size() * sizeof(void*));
+            auto scratch = emitter.getBuilder()->CreateBitCast(_scratch, g.llvm_value_type_ptr->getPointerTo());
+
+            for (int i = 0; i < v.size(); i++) {
+                llvm::Value* ptr = emitter.getBuilder()->CreateConstGEP1_32(scratch, i);
+
+                emitter.getBuilder()->CreateStore(converted_args[i]->getValue(), ptr);
+            }
+            rtn = emitter.getBuilder()->CreateCall2(g.funcs.createTuple, nelts, scratch);
+        }
 
         for (int i = 0; i < converted_args.size(); i++) {
             converted_args[i]->decvref(emitter);
