@@ -20,7 +20,7 @@
 #include "core/ast.h"
 #include "core/threading.h"
 #include "core/types.h"
-#include "runtime/complex.h"
+// #include "runtime/complex.h"
 #include "runtime/float.h"
 #include "runtime/generator.h"
 #include "runtime/import.h"
@@ -69,7 +69,7 @@ void force() {
     FORCE(createClosure);
     FORCE(createGenerator);
     FORCE(createLong);
-    FORCE(createPureImaginary);
+    // FORCE(createPureImaginary);
     FORCE(createSet);
     FORCE(decodeUTF8StringPtr);
 

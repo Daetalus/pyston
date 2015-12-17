@@ -46,8 +46,6 @@ void setupInt();
 void teardownInt();
 void setupFloat();
 void teardownFloat();
-void setupComplex();
-void teardownComplex();
 void setupStr();
 void teardownStr();
 void setupList();
@@ -91,13 +89,11 @@ extern "C" {
 extern BoxedClass* object_cls, *type_cls, *bool_cls, *int_cls, *long_cls, *float_cls, *str_cls, *function_cls,
     *none_cls, *instancemethod_cls, *list_cls, *slice_cls, *module_cls, *dict_cls, *tuple_cls, *file_cls,
     *enumerate_cls, *xrange_cls, *member_descriptor_cls, *null_importer_cls, *method_cls, *closure_cls, *generator_cls,
-    *complex_cls, *basestring_cls, *property_cls, *staticmethod_cls, *classmethod_cls, *attrwrapper_cls,
+    *basestring_cls, *property_cls, *staticmethod_cls, *classmethod_cls, *attrwrapper_cls,
     *pyston_getset_cls, *capi_getset_cls, *builtin_function_or_method_cls, *set_cls, *frozenset_cls, *code_cls,
     *frame_cls, *capifunc_cls, *wrapperdescr_cls, *wrapperobject_cls;
 }
-#define unicode_cls (&PyUnicode_Type)
-#define memoryview_cls (&PyMemoryView_Type)
-
+#define complex_cls (&PyComplex_Type)
 #define unicode_cls (&PyUnicode_Type)
 #define memoryview_cls (&PyMemoryView_Type)
 
@@ -380,15 +376,15 @@ public:
 static_assert(sizeof(BoxedFloat) == sizeof(PyFloatObject), "");
 static_assert(offsetof(BoxedFloat, d) == offsetof(PyFloatObject, ob_fval), "");
 
-class BoxedComplex : public Box {
-public:
-    double real;
-    double imag;
-
-    BoxedComplex(double r, double i) __attribute__((visibility("default"))) : real(r), imag(i) {}
-
-    DEFAULT_CLASS_SIMPLE(complex_cls);
-};
+// class BoxedComplex : public Box {
+// public:
+//     double real;
+//     double imag;
+//
+//     BoxedComplex(double r, double i) __attribute__((visibility("default"))) : real(r), imag(i) {}
+//
+//     DEFAULT_CLASS_SIMPLE(complex_cls);
+// };
 
 class BoxedBool : public BoxedInt {
 public:

@@ -91,5 +91,6 @@ int Py_NoSiteFlag = 0;
 int Py_OptimizeFlag = 0;
 int Py_VerboseFlag = 0;
 int Py_UnicodeFlag = 0;
+int Py_DivisionWarningFlag = 0;
 }
 }

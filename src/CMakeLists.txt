@@ -86,7 +86,6 @@ add_library(PYSTON_OBJECTS OBJECT ${OPTIONAL_SRCS}
 		runtime/capi.cpp
 		runtime/classobj.cpp
 		runtime/code.cpp
-		runtime/complex.cpp
 		runtime/ctxswitching.S
 		runtime/cxx_unwind.cpp
 		runtime/descr.cpp

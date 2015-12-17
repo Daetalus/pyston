@@ -35,7 +35,7 @@
 #include "core/types.h"
 #include "runtime/classobj.h"
 #include "runtime/code.h"
-#include "runtime/complex.h"
+// #include "runtime/complex.h"
 #include "runtime/dict.h"
 #include "runtime/file.h"
 #include "runtime/hiddenclass.h"
@@ -567,8 +567,8 @@ BoxedFloat* BoxedModule::getFloatConstant(double d) {
 
 Box* BoxedModule::getPureImaginaryConstant(double d) {
     Box*& r = imaginary_constants[getDoubleBits(d)];
-    if (!r)
-        r = createPureImaginary(d);
+    // if (!r)
+    //     r = createPureImaginary(d);
     return r;
 }
 
@@ -1557,7 +1557,7 @@ void BoxedClosure::gcHandler(GCVisitor* v, Box* b) {
 extern "C" {
 BoxedClass* object_cls, *type_cls, *none_cls, *bool_cls, *int_cls, *float_cls,
     * str_cls = NULL, *function_cls, *instancemethod_cls, *list_cls, *slice_cls, *module_cls, *dict_cls, *tuple_cls,
-      *file_cls, *member_descriptor_cls, *closure_cls, *generator_cls, *null_importer_cls, *complex_cls,
+      *file_cls, *member_descriptor_cls, *closure_cls, *generator_cls, *null_importer_cls,
       *basestring_cls, *property_cls, *staticmethod_cls, *classmethod_cls, *attrwrapper_cls, *pyston_getset_cls,
       *capi_getset_cls, *builtin_function_or_method_cls, *attrwrapperiter_cls, *set_cls, *frozenset_cls;
 
@@ -3689,7 +3689,7 @@ void setupRuntime() {
     int_cls = new (0) BoxedClass(object_cls, NULL, 0, 0, sizeof(BoxedInt), false, "int");
     int_cls->tp_flags |= Py_TPFLAGS_INT_SUBCLASS;
     bool_cls = new (0) BoxedClass(int_cls, NULL, 0, 0, sizeof(BoxedBool), false, "bool");
-    complex_cls = new (0) BoxedClass(object_cls, NULL, 0, 0, sizeof(BoxedComplex), false, "complex");
+    // complex_cls = new (0) BoxedClass(object_cls, NULL, 0, 0, sizeof(BoxedComplex), false, "complex");
     long_cls = new (0) BoxedClass(object_cls, &BoxedLong::gchandler, 0, 0, sizeof(BoxedLong), false, "long");
     long_cls->tp_flags |= Py_TPFLAGS_LONG_SUBCLASS;
     float_cls = new (0) BoxedClass(object_cls, NULL, 0, 0, sizeof(BoxedFloat), false, "float");
@@ -3739,7 +3739,7 @@ void setupRuntime() {
     file_cls->tp_mro = BoxedTuple::create({ file_cls, object_cls });
     int_cls->tp_mro = BoxedTuple::create({ int_cls, object_cls });
     bool_cls->tp_mro = BoxedTuple::create({ bool_cls, object_cls });
-    complex_cls->tp_mro = BoxedTuple::create({ complex_cls, object_cls });
+    // complex_cls->tp_mro = BoxedTuple::create({ complex_cls, object_cls });
     long_cls->tp_mro = BoxedTuple::create({ long_cls, object_cls });
     float_cls->tp_mro = BoxedTuple::create({ float_cls, object_cls });
     function_cls->tp_mro = BoxedTuple::create({ function_cls, object_cls });
@@ -3763,7 +3763,7 @@ void setupRuntime() {
     DICT = typeFromClass(dict_cls);
     BOXED_TUPLE = typeFromClass(tuple_cls);
     LONG = typeFromClass(long_cls);
-    BOXED_COMPLEX = typeFromClass(complex_cls);
+    // BOXED_COMPLEX = typeFromClass(complex_cls);
 
     True = new BoxedBool(true);
     False = new BoxedBool(false);
@@ -3794,7 +3794,7 @@ void setupRuntime() {
     file_cls->finishInitialization();
     int_cls->finishInitialization();
     bool_cls->finishInitialization();
-    complex_cls->finishInitialization();
+    // complex_cls->finishInitialization();
     long_cls->finishInitialization();
     float_cls->finishInitialization();
     function_cls->finishInitialization();
@@ -3925,7 +3925,6 @@ void setupRuntime() {
     setupBool();
     setupLong();
     setupFloat();
-    setupComplex();
     setupStr();
     setupList();
     setupDict();
@@ -4091,6 +4090,7 @@ void setupRuntime() {
 
     PyCallIter_Type.tpp_hasnext = calliterHasnextUnboxed;
     PyType_Ready(&PyCallIter_Type);
+    PyType_Ready(&PyComplex_Type);
 
     PyType_Ready(&PyCObject_Type);
     PyType_Ready(&PyDictProxy_Type);
@@ -4181,7 +4181,7 @@ void teardownRuntime() {
     teardownList();
     teardownInt();
     teardownFloat();
-    teardownComplex();
+    // teardownComplex();
     teardownStr();
     teardownBool();
     teardownDict();

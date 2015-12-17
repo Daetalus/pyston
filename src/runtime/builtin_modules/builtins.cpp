@@ -2083,6 +2083,7 @@ void setupBuiltins() {
     builtins_module->giveAttr("set", set_cls);
     builtins_module->giveAttr("frozenset", frozenset_cls);
     builtins_module->giveAttr("tuple", tuple_cls);
+    assert(complex_cls);
     builtins_module->giveAttr("complex", complex_cls);
     builtins_module->giveAttr("super", super_cls);
     builtins_module->giveAttr("property", property_cls);

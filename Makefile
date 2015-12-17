@@ -324,6 +324,7 @@ STDMODULE_SRCS := \
 STDOBJECT_SRCS := \
 	structseq.c \
 	capsule.c \
+	complexobject.c \
 	stringobject.c \
 	exceptions.c \
 	floatobject.c \
