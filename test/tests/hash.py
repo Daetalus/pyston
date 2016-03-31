@@ -2,6 +2,7 @@
 
 print hash
 print hash(1)
+print(hash(1L))
 
 i = hash("hello world")
 j = hash("hello" + " world")

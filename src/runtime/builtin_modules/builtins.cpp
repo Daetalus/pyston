@@ -270,7 +270,6 @@ extern "C" Box* max(Box* arg0, BoxedTuple* args, BoxedDict* kwargs) {
 }
 
 extern "C" Box* next(Box* iterator, Box* _default) noexcept {
-    assert(0 && "check refcounting");
     if (!PyIter_Check(iterator)) {
         PyErr_Format(PyExc_TypeError, "%.200s object is not an iterator", iterator->cls->tp_name);
         return NULL;
@@ -876,7 +875,6 @@ Box* reduce(Box* f, Box* container, Box* initial) {
 
 // from cpython, bltinmodule.c
 PyObject* filterstring(PyObject* func, BoxedString* strobj) {
-    assert(0 && "check refcounting");
     PyObject* result;
     Py_ssize_t i, j;
     Py_ssize_t len = PyString_Size(strobj);
@@ -996,7 +994,6 @@ Fail_1:
 }
 
 static PyObject* filterunicode(PyObject* func, PyObject* strobj) {
-    assert(0 && "check refcounting");
     PyObject* result;
     Py_ssize_t i, j;
     Py_ssize_t len = PyUnicode_GetSize(strobj);
@@ -1102,7 +1099,6 @@ Fail_1:
 }
 
 static PyObject* filtertuple(PyObject* func, PyObject* tuple) {
-    assert(0 && "check refcounting");
     PyObject* result;
     Py_ssize_t i, j;
     Py_ssize_t len = PyTuple_Size(tuple);
@@ -1169,7 +1165,6 @@ Fail_1:
 }
 
 Box* filter2(Box* f, Box* container) {
-    assert(0 && "check refcounting");
     // If the filter-function argument is None, filter() works by only returning
     // the elements that are truthy.  This is equivalent to using the bool() constructor.
     // - actually since we call nonzero() afterwards, we could use an ident() function
@@ -1204,17 +1199,22 @@ Box* filter2(Box* f, Box* container) {
     }
 
     Box* rtn = new BoxedList();
+    AUTO_DECREF(rtn);
     for (Box* e : container->pyElements()) {
         Box* r = runtimeCall(f, ArgPassSpec(1), e, NULL, NULL, NULL, NULL);
+        AUTO_DECREF(r);
         bool b = nonzero(r);
-        if (b)
-            listAppendInternal(rtn, e);
+
+        if (b) {
+            listAppendInternalStolen(rtn, e);
+        } else {
+            Py_DECREF(e);
+        }
     }
-    return rtn;
+    return incref(rtn);
 }
 
 Box* zip(BoxedTuple* containers) {
-    assert(0 && "check refcounting");
     assert(containers->cls == tuple_cls);
 
     BoxedList* rtn = new BoxedList();
@@ -1223,12 +1223,12 @@ Box* zip(BoxedTuple* containers) {
 
     std::vector<BoxIteratorRange> ranges;
     for (auto container : *containers) {
-        ranges.push_back(container->pyElements());
+        ranges.push_back(std::move(container->pyElements()));
     }
 
     std::vector<BoxIterator> iterators;
     for (auto&& range : ranges) {
-        iterators.push_back(range.begin());
+        iterators.push_back(std::move(range.begin()));
     }
 
     while (true) {
@@ -1242,6 +1242,7 @@ Box* zip(BoxedTuple* containers) {
             el->elts[i] = *iterators[i];
             ++(iterators[i]);
         }
+        AUTO_DECREF(el);
         listAppendInternal(rtn, el);
     }
 }
@@ -1786,16 +1787,19 @@ Box* builtinCmp(Box* a, Box* b) {
     return PyInt_FromLong((long)c);
 }
 
-Box* builtinApply(Box* func, Box* args, Box* keywords) {
-    assert(0 && "check refcounting");
-    if (!PyTuple_Check(args)) {
-        if (!PySequence_Check(args))
-            raiseExcHelper(TypeError, "apply() arg 2 expected sequence, found %s", getTypeName(args));
-        args = PySequence_Tuple(args);
+Box* builtinApply(Box* func, Box* _args, Box* keywords) {
+    Box* args;
+    if (!PyTuple_Check(_args)) {
+        if (!PySequence_Check(_args)){
+            raiseExcHelper(TypeError, "apply() arg 2 expected sequence, found %s", getTypeName(_args));
+        }
+        args = autoDecref(PySequence_Tuple(_args));
         checkAndThrowCAPIException();
     }
-    if (keywords && !PyDict_Check(keywords))
+    args = _args;
+    if (keywords && !PyDict_Check(keywords)) {
         raiseExcHelper(TypeError, "apply() arg 3 expected dictionary, found %s", getTypeName(keywords));
+    }
     return runtimeCall(func, ArgPassSpec(0, 0, true, keywords != NULL), args, keywords, NULL, NULL, NULL);
 }
 

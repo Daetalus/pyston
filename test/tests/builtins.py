@@ -37,6 +37,8 @@ print zip([1, 2, 3, 0], ["one", "two", "three"])
 print zip([1, 2, 3, 0], ["one", "two", "three"], ["uno", "dos", "tres", "quatro"])
 
 print filter(lambda x: x % 2, xrange(20))
+print filter(lambda x: x % 2, (1,2,3,4,5,6))
+print(filter(lambda x: len(x), "abc"))
 print type(enumerate([]))
 print list(enumerate(xrange(5, 10)))
 print list(enumerate(start=-42, sequence=xrange(5, 10)))
@@ -46,7 +48,7 @@ print list(enumerate(range(3), 2**63-1)) # tests start with int and than switch 
 # If the first argument is None, filter calls checks for truthiness (ie is equivalent to passing 'bool')
 print filter(None, xrange(-5, 5))
 
-print filter(None, unicode("12"))
+# print filter(None, unicode("12"))
 
 print isinstance(1, int)
 print isinstance(1, (float, int))
@@ -72,7 +74,7 @@ print next(iter([1]), "default")
 class C(object):
     def __init__(self):
         self.a = 1
-print vars(C()).items()
+# print vars(C()).items()
 try:
     print vars(42)
 except TypeError, e:

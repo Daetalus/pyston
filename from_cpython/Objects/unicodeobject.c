@@ -356,7 +356,7 @@ int _PyUnicode_Resize(PyUnicodeObject **unicode, Py_ssize_t length)
         return -1;
     }
     v = *unicode;
-    if (v == NULL || !PyUnicode_Check(v) || /* Pyston change, can't check this: Py_REFCNT(v) != 1 || */ length < 0) {
+    if (v == NULL || !PyUnicode_Check(v) ||  Py_REFCNT(v) != 1 || length < 0) {
         PyErr_BadInternalCall();
         return -1;
     }

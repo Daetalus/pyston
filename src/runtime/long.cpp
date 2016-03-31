@@ -1550,7 +1550,7 @@ Box* longHash(BoxedLong* self) {
         auto v = mpz_get_si(self->n);
         if (v == -1)
             v = -2;
-        return boxInt(v);
+        return autoDecref(boxInt(v));
     }
 
     // CPython use the absolute value of self mod ULONG_MAX.
