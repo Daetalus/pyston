@@ -42,6 +42,7 @@ pprof.jit
 tags
 TAGS
 *.pyc
+*.pys
 
 perf.data
 perf.data.old

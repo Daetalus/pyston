@@ -37,6 +37,18 @@ public:
 
     DEFAULT_CLASS(code_cls);
 
+    int co_nlocals;		/* #local variables */
+    int co_stacksize;		/* #entries needed for evaluation stack */
+    PyObject *co_code;		/* instruction opcodes */
+    PyObject *co_consts;	/* list (constants used) */
+    PyObject *co_names;		/* list of strings (names used) */
+    PyObject *co_freevars;	/* tuple of strings (free variable names) */
+    PyObject *co_cellvars;      /* tuple of strings (cell variable names) */
+    // #<{(| The rest doesn't count for hash/cmp |)}>#
+    // PyObject *co_lnotab;	#<{(| string (encoding addr<->lineno mapping) See
+	// 			   Objects/lnotab_notes.txt for details. |)}>#
+    // void *co_zombieframe;     #<{(| for optimization only (see frameobject.c) |)}>#
+    // PyObject *co_weakreflist;   #<{(| to support weakrefs to code objects |)}>#
     // These need to be static functions rather than methods because function
     // pointers could point to them.
     static BORROWED(Box*) name(Box* b, void*) noexcept;

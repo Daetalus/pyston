@@ -15,6 +15,7 @@
 #include "codegen/parser.h"
 
 #include "cpython_ast.h"
+#include "cpython_bytecode.h"
 
 #include <cassert>
 #include <cstdio>
@@ -35,7 +36,10 @@
 #include "core/types.h"
 #include "core/util.h"
 #include "runtime/types.h"
+#include "marshal.h"
 
+#define MAGIC (62211 | ((long)'\r'<<16) | ((long)'\n'<<24))
+static long pyc_magic = MAGIC;
 //#undef VERBOSITY
 //#define VERBOSITY(x) 2
 
@@ -1206,6 +1210,46 @@ static std::vector<char> _reparse(const char* fn, const std::string& cache_fn, A
     return file_data;
 }
 
+// Response for parse pyc file, and write a new pys file.
+AST_Module* parse_pyc_file(const char* fn) {
+    printf("Parsing CPython pyc file\n");
+    printf("%s\n", fn);
+    std::string pyc_cache_fn = std::string(fn) + "c";
+    PyObject *co;
+
+    printf("%s\n", pyc_cache_fn.c_str());
+    FileHandle pyc_cache_fp(pyc_cache_fn.c_str(), "r");
+
+    // Read magic and time
+    long magic = PyMarshal_ReadLongFromFile(pyc_cache_fp);
+    if (magic != pyc_magic) {
+        PyErr_Format(PyExc_ImportError,
+                     "Bad magic number in %.200s", pyc_cache_fn.c_str());
+        return NULL;
+    }
+    (void) PyMarshal_ReadLongFromFile(pyc_cache_fp);
+    co = PyMarshal_ReadLastObjectFromFile(pyc_cache_fp);
+    printf("test!");
+    if (co == NULL) {
+        printf("Empty pyc file?");
+        return NULL;
+    }
+
+    printf("test1!");
+    if (!PyCode_Check(co)) {
+        PyErr_Format(PyExc_ImportError,
+                     "Non-code object in %.200s", pyc_cache_fn.c_str());
+        Py_DECREF(co);
+        return NULL;
+    }
+    Py_XDECREF(co);
+    printf("We got a PyCodeObject!\n");
+    AST* ret = cpythonBytecodeToPystonAST((PyCodeObject*)co);
+    printf("We got an AST!\n");
+    // return (PyCodeObject *)co;
+    return NULL;
+}
+
 // Parsing the file is somewhat expensive since we have to shell out to cpython;
 // it's not a huge deal right now, but this caching version can significantly cut down
 // on the startup time (40ms -> 10ms).
@@ -1221,18 +1265,30 @@ AST_Module* caching_parse_file(const char* fn, FutureFlags inherited_flags) {
     Timer _t("parsing");
     _t.setExitCallback([](uint64_t t) { us_parsing.log(t); });
 
-    int code;
-    std::string cache_fn = std::string(fn) + "c";
+    int code, pyc_code;
+    std::string cache_fn = std::string(fn) + "s";
+    std::string pyc_cache_fn = std::string(fn) + "c";
 
-    struct stat source_stat, cache_stat;
+    struct stat source_stat, cache_stat, pyc_stat;
     code = stat(fn, &source_stat);
     assert(code == 0);
     code = stat(cache_fn.c_str(), &cache_stat);
+    pyc_code = stat(pyc_cache_fn.c_str(), &pyc_stat);
+
+    if (code != 0 && pyc_code == 0 && (pyc_stat.st_mtime > source_stat.st_mtime
+                      || (pyc_stat.st_mtime == source_stat.st_mtime
+                          && pyc_stat.st_mtim.tv_nsec > source_stat.st_mtim.tv_nsec))) {
+        AST_Module* mod = 0;
+        mod = parse_pyc_file(fn);
+        if (mod)
+            return mod;
+    }
+
     std::vector<char> file_data;
     if (code == 0 && (cache_stat.st_mtime > source_stat.st_mtime
                       || (cache_stat.st_mtime == source_stat.st_mtime
                           && cache_stat.st_mtim.tv_nsec > source_stat.st_mtim.tv_nsec))) {
-        oss << "reading pyc file\n";
+        oss << "reading pys file\n";
         char buf[1024];
 
         FileHandle cache_fp(cache_fn.c_str(), "r");
@@ -1273,7 +1329,7 @@ AST_Module* caching_parse_file(const char* fn, FutureFlags inherited_flags) {
             if (strncmp(&file_data[0], getMagic(), MAGIC_STRING_LENGTH) != 0) {
                 oss << "magic string did not match\n";
                 if (VERBOSITY() >= 2 || tries == MAX_TRIES) {
-                    fprintf(stderr, "Warning: corrupt or non-Pyston .pyc file found; ignoring\n");
+                    fprintf(stderr, "Warning: corrupt or non-Pyston .pys file found; ignoring\n");
                     fprintf(stderr, "%d %d %d %d\n", file_data[0], file_data[1], file_data[2], file_data[3]);
                     fprintf(stderr, "%d %d %d %d\n", getMagic()[0], getMagic()[1], getMagic()[2], getMagic()[3]);
                 }
@@ -1291,7 +1347,7 @@ AST_Module* caching_parse_file(const char* fn, FutureFlags inherited_flags) {
             if (expected_total_length != file_data.size()) {
                 oss << "length did not match\n";
                 if (VERBOSITY() || tries == MAX_TRIES) {
-                    fprintf(stderr, "Warning: truncated .pyc file found; ignoring\n");
+                    fprintf(stderr, "Warning: truncated .pys file found; ignoring\n");
                 }
                 good = false;
             } else {
@@ -1312,7 +1368,7 @@ AST_Module* caching_parse_file(const char* fn, FutureFlags inherited_flags) {
             if (checksum != 0) {
                 oss << "checksum did not match\n";
                 if (VERBOSITY() || tries == MAX_TRIES)
-                    fprintf(stderr, "pyc checksum failed!\n");
+                    fprintf(stderr, "pys checksum failed!\n");
                 good = false;
             }
         }

@@ -39,6 +39,7 @@ add_library(PYSTON_OBJECTS OBJECT ${OPTIONAL_SRCS}
 		codegen/codegen.cpp
 		codegen/compvars.cpp
         codegen/cpython_ast.cpp
+        codegen/cpython_bytecode.cpp
 		codegen/entry.cpp
 		codegen/gcbuilder.cpp
 		codegen/irgen.cpp
