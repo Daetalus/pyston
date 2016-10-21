@@ -632,6 +632,150 @@ endlabel:
     */
 }
 
+/*
+ * Helpers for  __dict__ descriptor.  We don't want to expose the dicts
+ * inherited from various builtin types.  The builtin base usually provides
+ * its own __dict__ descriptor, so we use that when we can.
+ */
+static PyTypeObject* get_builtin_base_with_dict(PyTypeObject* type) {
+    while (type->tp_base != NULL) {
+        if (type->tp_dictoffset != 0 && !(type->tp_flags & Py_TPFLAGS_HEAPTYPE))
+            return type;
+        type = type->tp_base;
+    }
+    return NULL;
+}
+
+static PyObject* get_dict_descriptor(PyTypeObject* type) {
+    static PyObject* dict_str;
+    PyObject* descr;
+
+    if (dict_str == NULL) {
+        dict_str = PyString_InternFromString("__dict__");
+        if (dict_str == NULL)
+            return NULL;
+    }
+    descr = _PyType_Lookup(type, dict_str);
+    if (descr == NULL || !PyDescr_IsData(descr))
+        return NULL;
+
+    return descr;
+}
+
+static void raise_dict_descr_error(PyObject* obj) {
+    PyErr_Format(PyExc_TypeError, "this __dict__ descriptor does not support "
+                                  "'%.200s' objects",
+                 obj->cls->tp_name);
+}
+
+
+
+static PyObject* subtype_dict(PyObject* obj, void* context) {
+    PyObject** dictptr;
+    PyObject* dict;
+    PyTypeObject* base;
+
+    base = get_builtin_base_with_dict(obj->cls);
+    if (base != NULL) {
+        descrgetfunc func;
+        PyObject* descr = get_dict_descriptor(base);
+        if (descr == NULL) {
+            raise_dict_descr_error(obj);
+            return NULL;
+        }
+        func = descr->cls->tp_descr_get;
+        if (func == NULL) {
+            raise_dict_descr_error(obj);
+            return NULL;
+        }
+        return func(descr, obj, (PyObject*)(obj->cls));
+    }
+
+    dictptr = _PyObject_GetDictPtr(obj);
+    if (dictptr == NULL) {
+        PyErr_SetString(PyExc_AttributeError, "This object has no __dict__");
+        return NULL;
+    }
+    dict = *dictptr;
+    if (dict == NULL)
+        *dictptr = dict = PyDict_New();
+    Py_XINCREF(dict);
+    return dict;
+}
+
+static int subtype_setdict(PyObject* obj, PyObject* value, void* context) {
+    PyObject** dictptr;
+    PyObject* dict;
+    PyTypeObject* base;
+
+    base = get_builtin_base_with_dict(obj->cls);
+    if (base != NULL) {
+        descrsetfunc func;
+        PyObject* descr = get_dict_descriptor(base);
+        if (descr == NULL) {
+            raise_dict_descr_error(obj);
+            return -1;
+        }
+        func = descr->cls->tp_descr_set;
+        if (func == NULL) {
+            raise_dict_descr_error(obj);
+            return -1;
+        }
+        return func(descr, obj, value);
+    }
+
+    dictptr = _PyObject_GetDictPtr(obj);
+    if (dictptr == NULL) {
+        PyErr_SetString(PyExc_AttributeError, "This object has no __dict__");
+        return -1;
+    }
+    if (value != NULL && !PyDict_Check(value)) {
+        PyErr_Format(PyExc_TypeError, "__dict__ must be set to a dictionary, "
+                                      "not a '%.200s'",
+                     Py_TYPE(value)->tp_name);
+        return -1;
+    }
+    dict = *dictptr;
+    Py_XINCREF(value);
+    *dictptr = value;
+    Py_XDECREF(dict);
+    return 0;
+}
+
+static PyObject* subtype_getweakref(PyObject* obj, void* context) {
+    PyObject** weaklistptr;
+    PyObject* result;
+
+    if (Py_TYPE(obj)->tp_weaklistoffset == 0) {
+        PyErr_SetString(PyExc_AttributeError, "This object has no __weakref__");
+        return NULL;
+    }
+    assert(Py_TYPE(obj)->tp_weaklistoffset > 0);
+    assert(Py_TYPE(obj)->tp_weaklistoffset + sizeof(PyObject*) <= (size_t)(Py_TYPE(obj)->tp_basicsize));
+    weaklistptr = (PyObject**)((char*)obj + Py_TYPE(obj)->tp_weaklistoffset);
+    if (*weaklistptr == NULL)
+        result = Py_None;
+    else
+        result = *weaklistptr;
+    Py_INCREF(result);
+    return result;
+}
+
+/* Three variants on the subtype_getsets list. */
+
+static PyGetSetDef subtype_getsets_full[]
+    = { { "__dict__", subtype_dict, subtype_setdict, PyDoc_STR("dictionary for instance variables (if defined)"), 0 },
+        { "__weakref__", subtype_getweakref, NULL, PyDoc_STR("list of weak references to the object (if defined)"), 0 },
+        { 0, 0, 0, 0, 0 } };
+
+static PyGetSetDef subtype_getsets_dict_only[]
+    = { { "__dict__", subtype_dict, subtype_setdict, PyDoc_STR("dictionary for instance variables (if defined)"), 0 },
+        { 0, 0, 0, 0, 0 } };
+
+static PyGetSetDef subtype_getsets_weakref_only[]
+    = { { "__weakref__", subtype_getweakref, NULL, PyDoc_STR("list of weak references to the object (if defined)"), 0 },
+        { 0, 0, 0, 0, 0 } };
+
 void BoxedClass::freeze() {
     assert(!is_constant);
     assert(tp_name); // otherwise debugging will be very hard
@@ -7107,6 +7251,15 @@ Box* _typeNew(BoxedClass* metatype, BoxedString* name, BoxedTuple* bases, BoxedD
     // This hack also exists in BoxedHeapClass::create
     RELEASE_ASSERT(classes.back() == made, "");
     classes.pop_back();
+
+    if (weaklist_offset && attrs_offset)
+        made->tp_getset = subtype_getsets_full;
+    else if (weaklist_offset && attrs_offset)
+        made->tp_getset = subtype_getsets_weakref_only;
+    else if (!weaklist_offset && attrs_offset)
+        made->tp_getset = subtype_getsets_dict_only;
+    else
+        made->tp_getset = NULL;
 
     if (boxedSlots) {
         // Set ht_slots
