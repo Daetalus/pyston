@@ -237,6 +237,39 @@ void frameInvalidateBack(BoxedFrame* frame) {
 }
 
 extern "C" void initFrame(FrameInfo* frame_info) {
+    FrameInfo* back = (FrameInfo*)(cur_thread_state.frame_info);
+    Box* builtins;
+    static BoxedString* builtins_str = getStaticString("__builtins__");
+    if (back == NULL || back->globals != frame_info->globals) { 
+        builtins = PyDict_GetItem(frame_info->globals, builtins_str);
+        if (builtins) {
+            if (PyModule_Check(builtins)) {
+                builtins = PyModule_GetDict(builtins);
+                assert(!builtins || PyDict_Check(builtins));
+            } else if (!PyDict_Check(builtins))
+                builtins = NULL;
+        }
+        if (builtins == NULL) {
+            /* No builtins!              Make up a minimal one
+               Give them 'None', at least. */
+            builtins = PyDict_New();
+            if (builtins == NULL ||
+                    PyDict_SetItemString(
+                        builtins, "None", Py_None) < 0)
+                return;
+        }
+        else
+            Py_INCREF(builtins);
+
+    }
+    else {
+        /* If we share the globals, we share the builtins.
+           Save a lookup and a call. */
+        builtins = back->builtins;
+        assert(builtins != NULL && PyDict_Check(builtins));
+        Py_INCREF(builtins);
+    }
+    frame_info->builtins = builtins;
     frame_info->back = (FrameInfo*)(cur_thread_state.frame_info);
     cur_thread_state.frame_info = frame_info;
 }
@@ -305,6 +338,7 @@ extern "C" void deinitFrame(FrameInfo* frame_info) noexcept {
     Py_CLEAR(frame_info->boxedLocals);
 
     Py_CLEAR(frame_info->globals);
+    Py_CLEAR(frame_info->builtins);
 
     assert(!PyErr_Occurred());
     if (restore_exc)

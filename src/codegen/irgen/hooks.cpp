@@ -239,7 +239,8 @@ void compileAndRunModule(AST_Module* m, BoxedModule* bm) {
 
     static BoxedString* builtins_str = getStaticString("__builtins__");
     if (!bm->hasattr(builtins_str))
-        bm->setattr(builtins_str, PyModule_GetDict(builtins_module), NULL);
+        bm->setattr(builtins_str, PyModule_GetDict(((FrameInfo*)cur_thread_state.frame_info)->builtins), NULL);
+        // bm->setattr(builtins_str, PyModule_GetDict(builtins_module), NULL);
 
     UNAVOIDABLE_STAT_TIMER(t0, "us_timer_interpreted_module_toplevel");
     Box* r = astInterpretFunction(code, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
@@ -397,9 +398,11 @@ static void pickGlobalsAndLocals(Box*& globals, Box*& locals) {
         if (requested_builtins == NULL)
             PyDict_SetItemString(globals_dict, "__builtins__", PyEval_GetBuiltins());
         else
-            RELEASE_ASSERT(requested_builtins == builtins_module
-                               || requested_builtins == builtins_module->getAttrWrapper(),
-                           "we don't support overriding __builtins__");
+            ((FrameInfo*)cur_thread_state.frame_info)->builtins = requested_builtins;
+        // else
+        //     RELEASE_ASSERT(requested_builtins == builtins_module
+        //                        || requested_builtins == builtins_module->getAttrWrapper(),
+        //                    "we don't support overriding __builtins__");
     }
 }
 

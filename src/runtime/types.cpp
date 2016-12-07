@@ -4718,7 +4718,8 @@ BORROWED(BoxedModule*) createModule(BoxedString* name, const char* fn, const cha
         module->setattr(autoDecref(internStringMortal("__file__")), autoDecref(boxString(fn)), NULL);
 
     if (name->s() == "__main__")
-        module->setattr(autoDecref(internStringMortal("__builtins__")), builtins_module, NULL);
+        module->setattr(autoDecref(internStringMortal("__builtins__")), ((FrameInfo*)cur_thread_state.frame_info)->builtins, NULL);
+        // module->setattr(autoDecref(internStringMortal("__builtins__")), builtins_module, NULL);
     return module;
 }
 

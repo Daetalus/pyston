@@ -476,7 +476,8 @@ static PyObject* sys_displayhook(PyObject* self, PyObject* o) noexcept {
         return NULL;
     }
     */
-    PyObject* builtins = builtins_module;
+    // PyObject* builtins = builtins_module;
+    PyObject* builtins = ((FrameInfo*)cur_thread_state.frame_info)->builtins;
 
     /* Print value except if None */
     /* After printing, also assign to '_' */

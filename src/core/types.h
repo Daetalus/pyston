@@ -1058,6 +1058,8 @@ struct FrameInfo {
     FrameInfo* back;
     // TODO does this need to be owned?  how does cpython do it?
     BORROWED(BoxedCode*) code;
+    // What type should this field be?
+    BORROWED(Box*) builtins;
 
     BORROWED(Box*) updateBoxedLocals();
 
